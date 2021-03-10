@@ -133,16 +133,13 @@ func (r *Runtime) CreateContainer(
 	if name == "" {
 		name = unique.NewID().String()
 	}
+
 	c, err := r.client.ContainerCreate(ctx, cconf, hconf, nil, nil, name)
 	if err != nil {
-		errorMessage := err.Error()
-		// This will produce a cleaner error message about the host path missing
-		// when docker tries to mount.
-		if strings.Contains(err.Error(), pathDneError) {
-			splittable := []rune(errorMessage)
-			simpler := splittable[strings.Index(errorMessage, pathDneError):]
-			errorMessage = string(simpler)
-			return nil, errors.New(errorMessage)
+		msg := err.Error()
+		if i := strings.Index(msg, pathDneError); i != -1 {
+			// Sanitize mounting errors for cleaner presentation.
+			return nil, errors.New(msg[i:])
 		}
 		return nil, err
 	}

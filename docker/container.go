@@ -15,7 +15,6 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
-	log "github.com/sirupsen/logrus"
 	"golang.org/x/term"
 
 	"github.com/beaker/runtime"
@@ -72,26 +71,28 @@ func (c *Container) Info(ctx context.Context) (*runtime.ContainerInfo, error) {
 
 	// Translate container status. The logic here is based on Kubernetes.
 	// At time of writing: "k8s.io/kubernetes/pkg/kubelet/dockershim"
-	if body.State.Running {
+	switch {
+	case body.State.Running:
 		info.Status = runtime.StatusRunning
-	} else if info.EndedAt.IsZero() {
-		// Container never started. The container is started on creation so this case is unexpected.
-		log.Warnf("Found unstarted container: %s", c.id)
 
-		info.Status = runtime.StatusExited
-		info.Message = body.State.Error
-		if body.State.ExitCode != 0 {
-			// Set end time since this container is dead.
-			info.EndedAt = info.StartedAt
-			info.Message = addContext(info.Message, "failed start")
-		}
-	} else { // Container ended.
+	case !info.EndedAt.IsZero():
+		// Container ended.
 		info.Status = runtime.StatusExited
 		info.Message = body.State.Error
 		info.ExitCode = &body.State.ExitCode
 		if body.State.OOMKilled {
 			info.Message = addContext(info.Message, "out of memory")
 		}
+
+	case body.State.ExitCode != 0:
+		// Container failed to start. It's dead.
+		info.Status = runtime.StatusExited
+		info.EndedAt = info.StartedAt
+		info.Message = addContext(body.State.Error, "failed start")
+
+	default:
+		// Container hasn't started yet.
+		info.Status = runtime.StatusCreated
 	}
 
 	return &info, nil

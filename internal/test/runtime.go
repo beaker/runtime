@@ -79,7 +79,7 @@ func (s *RuntimeSuite) TestCreateInspect() {
 		assert.NotZero(t, info.CreatedAt)
 		assert.Zero(t, info.StartedAt)
 		assert.Zero(t, info.EndedAt)
-		assert.Equal(t, runtime.StatusExited, info.Status)
+		assert.Equal(t, runtime.StatusCreated, info.Status)
 		assert.Zero(t, info.Message)
 		assert.Nil(t, info.ExitCode)
 		assert.Equal(t, int64(0), info.Memory)
@@ -116,7 +116,7 @@ func (s *RuntimeSuite) TestCreateInspect() {
 		assert.NotZero(t, info.CreatedAt)
 		assert.Zero(t, info.StartedAt)
 		assert.Zero(t, info.EndedAt)
-		assert.Equal(t, runtime.StatusExited, info.Status)
+		assert.Equal(t, runtime.StatusCreated, info.Status)
 		assert.Zero(t, info.Message)
 		assert.Nil(t, info.ExitCode)
 		assert.Equal(t, int64(4*1024*1024), info.Memory)
@@ -133,10 +133,29 @@ func (s *RuntimeSuite) TestCreateInspect() {
 		info, err := ctr.Info(ctx)
 		require.NoError(t, err)
 		assert.NotZero(t, info.CreatedAt)
-		assert.False(t, info.CreatedAt.After(info.StartedAt), "Container can't start before it's created.")
+		assert.True(t, info.StartedAt.After(info.CreatedAt), "Container can only start after creation.")
 		assert.Zero(t, info.EndedAt, "Container should not have ended.")
-		assert.Equal(t, runtime.StatusRunning, info.Status)
+		assert.Equal(t, runtime.StatusRunning, info.Status, "Container should have running status.")
 		assert.Nil(t, info.ExitCode, "Container should not have exited.")
+	})
+
+	t.Run("Ended", func(t *testing.T) {
+		ctr, err := s.rt.CreateContainer(ctx, &runtime.ContainerOpts{
+			Image:   busybox,
+			Command: []string{"/bin/sh", "-c", "exit 1"},
+		})
+		require.NoError(t, err)
+		defer ctr.Remove(ctx)
+
+		require.NoError(t, ctr.Start(ctx))
+
+		info, err := awaitExit(ctr)
+		require.NoError(t, err)
+		assert.NotZero(t, info.CreatedAt)
+		assert.True(t, info.StartedAt.After(info.CreatedAt), "Container can only start after creation.")
+		assert.True(t, info.EndedAt.After(info.StartedAt), "Container can only end after starting.")
+		assert.Equal(t, runtime.StatusExited, info.Status, "Container should have exited status.")
+		assert.Equal(t, intPtr(1), info.ExitCode, "Container should have an exit code.")
 	})
 
 	t.Run("NotFound", func(t *testing.T) {

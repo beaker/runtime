@@ -96,8 +96,11 @@ type ContainerInfo struct {
 type ContainerStatus int
 
 const (
+	// StatusCreated indicates a container has been created, but not started.
+	StatusCreated ContainerStatus = iota
+
 	// StatusRunning indicates a container is currently running.
-	StatusRunning ContainerStatus = iota
+	StatusRunning
 
 	// StatusExited indicates a container exited.
 	StatusExited
