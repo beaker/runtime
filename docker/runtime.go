@@ -73,6 +73,8 @@ func (r *Runtime) CreateContainer(
 		Image:      opts.Image.Tag,
 		Entrypoint: opts.Command,
 		Cmd:        opts.Arguments,
+		User:       opts.User,
+		WorkingDir: opts.WorkingDir,
 	}
 	hconf := &container.HostConfig{}
 

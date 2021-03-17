@@ -38,6 +38,13 @@ type ContainerOpts struct {
 	Memory   int64 // In bytes
 	CPUCount float64
 	GPUs     []string // IDs or indices.
+
+	// (optional) User that will run commands inside the container. Also supports "user:group".
+	// If not provided, the container is run as root.
+	User string
+
+	// (optional) WorkingDir where the command will be launched.
+	WorkingDir string
 }
 
 // DockerImage specifies a Docker-based container image.

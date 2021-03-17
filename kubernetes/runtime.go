@@ -95,6 +95,12 @@ func (r *Runtime) CreateContainer(
 	if opts.Interactive {
 		return nil, errors.New("interactive shells are not implemented for Kubernetes")
 	}
+	if opts.User != "" {
+		return nil, errors.New("users configuration is not implemented for Kubernetes")
+	}
+	if opts.WorkingDir != "" {
+		return nil, errors.New("working directory configuration is not implemented for Kubernetes")
+	}
 
 	labels := map[string]string{nodeLabel: r.node}
 	annos := make(map[string]string, len(opts.Labels))
