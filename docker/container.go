@@ -310,7 +310,7 @@ func (c *Container) monitorTTYSize(ctx context.Context) {
 }
 
 func (c *Container) resizeTTY(ctx context.Context) error {
-	h, w, err := term.GetSize(int(os.Stdout.Fd()))
+	w, h, err := term.GetSize(int(os.Stdout.Fd()))
 	if err != nil {
 		return err
 	}
