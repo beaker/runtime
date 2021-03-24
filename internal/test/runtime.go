@@ -67,6 +67,7 @@ func (s *RuntimeSuite) TestCreateInspect() {
 	t, ctx := s.T(), s.ctx
 
 	t.Run("Minimal", func(t *testing.T) {
+		require.NoError(t, s.rt.PullImage(ctx, busybox, true))
 		ctr, err := s.rt.CreateContainer(ctx, &runtime.ContainerOpts{Image: busybox})
 		require.NoError(t, err)
 		defer ctr.Remove(ctx)
@@ -87,6 +88,7 @@ func (s *RuntimeSuite) TestCreateInspect() {
 	})
 
 	t.Run("Full", func(t *testing.T) {
+		require.NoError(t, s.rt.PullImage(ctx, busybox, true))
 		ctr, err := s.rt.CreateContainer(ctx, &runtime.ContainerOpts{
 			Name:      "TestImage",
 			Image:     busybox, // TODO: Find a way to test registry creds.
@@ -124,6 +126,7 @@ func (s *RuntimeSuite) TestCreateInspect() {
 	})
 
 	t.Run("Running", func(t *testing.T) {
+		require.NoError(t, s.rt.PullImage(ctx, busybox, true))
 		ctr, err := s.rt.CreateContainer(ctx, &runtime.ContainerOpts{Image: busybox})
 		require.NoError(t, err)
 		defer ctr.Remove(ctx)
@@ -140,6 +143,7 @@ func (s *RuntimeSuite) TestCreateInspect() {
 	})
 
 	t.Run("Ended", func(t *testing.T) {
+		require.NoError(t, s.rt.PullImage(ctx, busybox, true))
 		ctr, err := s.rt.CreateContainer(ctx, &runtime.ContainerOpts{
 			Image:   busybox,
 			Command: []string{"/bin/sh", "-c", "exit 1"},
@@ -159,6 +163,7 @@ func (s *RuntimeSuite) TestCreateInspect() {
 	})
 
 	t.Run("NotFound", func(t *testing.T) {
+		require.NoError(t, s.rt.PullImage(ctx, busybox, true))
 		ctr, err := s.rt.CreateContainer(ctx, &runtime.ContainerOpts{Image: busybox})
 		require.NoError(t, err)
 		require.NoError(t, ctr.Remove(ctx))
@@ -178,6 +183,7 @@ func (s *RuntimeSuite) TestListContainers() {
 	})
 
 	t.Run("MultipleResults", func(t *testing.T) {
+		require.NoError(t, s.rt.PullImage(ctx, busybox, true))
 		ctr1, err := s.rt.CreateContainer(ctx, &runtime.ContainerOpts{Image: busybox})
 		require.NoError(t, err)
 		defer ctr1.Remove(ctx)
@@ -197,6 +203,7 @@ func (s *RuntimeSuite) TestListContainers() {
 	})
 
 	t.Run("DeleteContainer", func(t *testing.T) {
+		require.NoError(t, s.rt.PullImage(ctx, busybox, true))
 		ctr1, err := s.rt.CreateContainer(ctx, &runtime.ContainerOpts{Image: busybox})
 		require.NoError(t, err)
 		ctr1.Remove(ctx)
@@ -216,6 +223,7 @@ func (s *RuntimeSuite) TestContainerLogs() {
 	t, ctx := s.T(), s.ctx
 
 	t.Run("NoLogs", func(t *testing.T) {
+		require.NoError(t, s.rt.PullImage(ctx, busybox, true))
 		ctr, err := s.rt.CreateContainer(ctx, &runtime.ContainerOpts{Image: busybox})
 		require.NoError(t, err)
 		defer ctr.Remove(ctx)
@@ -233,6 +241,7 @@ func (s *RuntimeSuite) TestContainerLogs() {
 	})
 
 	t.Run("MultipleLines", func(t *testing.T) {
+		require.NoError(t, s.rt.PullImage(ctx, busybox, true))
 		ctr, err := s.rt.CreateContainer(ctx, &runtime.ContainerOpts{
 			Image:     busybox,
 			Command:   []string{"sh", "-c"},
@@ -263,6 +272,7 @@ func (s *RuntimeSuite) TestContainerLogs() {
 	})
 
 	t.Run("Stderr", func(t *testing.T) {
+		require.NoError(t, s.rt.PullImage(ctx, busybox, true))
 		ctr, err := s.rt.CreateContainer(ctx, &runtime.ContainerOpts{
 			Image:     busybox,
 			Command:   []string{"sh", "-c"},
@@ -302,6 +312,7 @@ func (s *RuntimeSuite) TestContainerStop() {
 	}
 
 	t.Run("InstaKill", func(t *testing.T) {
+		require.NoError(t, s.rt.PullImage(ctx, spinForever.Image, true))
 		var zero time.Duration
 		ctr, err := s.rt.CreateContainer(ctx, spinForever)
 		require.NoError(t, err)
@@ -317,6 +328,7 @@ func (s *RuntimeSuite) TestContainerStop() {
 	})
 
 	t.Run("DelayedKill", func(t *testing.T) {
+		require.NoError(t, s.rt.PullImage(ctx, spinForever.Image, true))
 		delay := 5 * time.Second // This is really long for a test, but Docker is slow.
 		ctr, err := s.rt.CreateContainer(ctx, spinForever)
 		require.NoError(t, err)

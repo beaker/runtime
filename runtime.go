@@ -15,6 +15,7 @@ import (
 type Runtime interface {
 	io.Closer
 
+	PullImage(ctx context.Context, image *DockerImage, quiet bool) error
 	CreateContainer(ctx context.Context, opts *ContainerOpts) (Container, error)
 	ListContainers(ctx context.Context) ([]Container, error)
 }

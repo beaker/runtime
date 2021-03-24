@@ -87,6 +87,15 @@ func (r *Runtime) Close() error {
 	return nil
 }
 
+// PullImage is a no-op on Kubernetes; images are pulled implicitly on container creation.
+func (r *Runtime) PullImage(
+	ctx context.Context,
+	image *runtime.DockerImage,
+	quiet bool,
+) error {
+	return nil
+}
+
 // CreateContainer creates a new container. The container is started implicitly.
 func (r *Runtime) CreateContainer(
 	ctx context.Context,

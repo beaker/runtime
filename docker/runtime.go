@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/jsonmessage"
 
 	"github.com/beaker/runtime"
 )
@@ -52,15 +54,40 @@ func (r *Runtime) Close() error {
 	return r.client.Close()
 }
 
+// PullImage pulls a Docker image and prints progress to stdout unless quiet is set.
+func (r *Runtime) PullImage(
+	ctx context.Context,
+	image *runtime.DockerImage,
+	quiet bool,
+) error {
+	registryAuth, err := encodeRegistryAuth(image.Auth)
+	if err != nil {
+		return fmt.Errorf("encoding registry auth: %w", err)
+	}
+
+	// Start the pull operation. The pull operation is not complete until the reader has been drained.
+	out, err := r.client.ImagePull(ctx, image.Tag, types.ImagePullOptions{RegistryAuth: registryAuth})
+	if err != nil {
+		return err
+	}
+
+	if quiet {
+		_, err = io.Copy(ioutil.Discard, out)
+	} else {
+		err = jsonmessage.DisplayJSONMessagesStream(out, os.Stdout, os.Stdout.Fd(), true, nil)
+	}
+	if err != nil {
+		r.Close()
+		return err
+	}
+	return r.Close()
+}
+
 // CreateContainer creates a new container. Call Start to run it.
 func (r *Runtime) CreateContainer(
 	ctx context.Context,
 	opts *runtime.ContainerOpts,
 ) (runtime.Container, error) {
-	if err := pull(ctx, r.client, opts.Image); err != nil {
-		return nil, fmt.Errorf("pulling image: %w", err)
-	}
-
 	// Prevent collisions on protected variables and labels.
 	if _, ok := opts.Env[visibleDevicesEnv]; ok {
 		return nil, fmt.Errorf("forbidden environment variable: %s", visibleDevicesEnv)
@@ -172,26 +199,6 @@ func (r *Runtime) ListContainers(ctx context.Context) ([]runtime.Container, erro
 		containers[i] = WrapContainer(r.client, c.ID)
 	}
 	return containers, nil
-}
-
-func pull(ctx context.Context, client *client.Client, image *runtime.DockerImage) error {
-	registryAuth, err := encodeRegistryAuth(image.Auth)
-	if err != nil {
-		return fmt.Errorf("encoding registry auth: %w", err)
-	}
-
-	// Start the pull operation. The pull operation is not complete until the reader has been drained.
-	r, err := client.ImagePull(ctx, image.Tag, types.ImagePullOptions{RegistryAuth: registryAuth})
-	if err != nil {
-		return err
-	}
-	if _, err := io.Copy(ioutil.Discard, r); err != nil {
-		return fmt.Errorf("draining reader: %w", err)
-	}
-	if err := r.Close(); err != nil {
-		return err
-	}
-	return nil
 }
 
 func encodeRegistryAuth(auth *runtime.RegistryAuth) (string, error) {
