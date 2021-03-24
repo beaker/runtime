@@ -84,6 +84,12 @@ func (r *Runtime) CreateContainer(
 		cconf.AttachStdout = true
 		cconf.AttachStderr = true
 		cconf.Tty = true
+
+		// Init inserts a tiny init-process into the container as the main process
+		// and handles reaping of all processes when the container exits.
+		// Details here: https://docs.docker.com/config/containers/multi-service_container
+		init := true
+		hconf.Init = &init
 	}
 
 	cconf.Labels = make(map[string]string, len(opts.Labels)+1)
