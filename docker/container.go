@@ -261,10 +261,6 @@ func (c *Container) Attach(ctx context.Context) error {
 	}
 	defer resp.Close()
 
-	if err := c.Start(ctx); err != nil {
-		return err
-	}
-
 	if tty {
 		if err := c.resizeTTY(ctx); err != nil {
 			return fmt.Errorf("couldn't set terminal dimensions: %w", err)
