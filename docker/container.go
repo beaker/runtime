@@ -262,10 +262,7 @@ func (c *Container) Attach(ctx context.Context) error {
 	defer resp.Close()
 
 	if tty {
-		if err := c.resizeTTY(ctx); err != nil {
-			return fmt.Errorf("couldn't set terminal dimensions: %w", err)
-		}
-		c.monitorTTYSize(ctx)
+		c.monitorTTYSize(ctx, "")
 	}
 
 	resultC, errC := c.client.ContainerWait(ctx, c.id, "")
@@ -292,7 +289,25 @@ func (c *Container) Attach(ctx context.Context) error {
 
 // monitorTTYSize monitors the outer shell and resizes the container's TTY to match.
 // https://github.com/docker/cli/blob/fff164c22e8dc904291fecb62307312fd4ca153e/cli/command/container/tty.go#L71
-func (c *Container) monitorTTYSize(ctx context.Context) {
+// Optionally takes an execution ID to resize. If omitted, the root TTY is resized.
+func (c *Container) monitorTTYSize(ctx context.Context, exec string) {
+	// The Docker CLI includes a few retries for the initial resize to give the
+	// process time to start. Duplicating Docker's retry logic here.
+	if err := c.resizeTTY(ctx, exec); err != nil {
+		go func() {
+			var err error
+			for retry := 0; retry < 5; retry++ {
+				time.Sleep(10 * time.Millisecond)
+				if err = c.resizeTTY(ctx, exec); err == nil {
+					break
+				}
+			}
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "failed to resize tty, using default size")
+			}
+		}()
+	}
+
 	sigchan := make(chan os.Signal, 1)
 	signal.Notify(sigchan, syscall.SIGWINCH)
 
@@ -300,17 +315,22 @@ func (c *Container) monitorTTYSize(ctx context.Context) {
 	// end shortly after the attached shell exits.
 	go func() {
 		for range sigchan {
-			c.resizeTTY(ctx)
+			c.resizeTTY(ctx, exec)
 		}
 	}()
 }
 
-func (c *Container) resizeTTY(ctx context.Context) error {
+func (c *Container) resizeTTY(ctx context.Context, exec string) error {
 	w, h, err := term.GetSize(int(os.Stdout.Fd()))
 	if err != nil {
 		return err
 	}
-	return c.client.ContainerResize(ctx, c.id, types.ResizeOptions{Height: uint(h), Width: uint(w)})
+	opts := types.ResizeOptions{Height: uint(h), Width: uint(w)}
+	if exec != "" {
+		return c.client.ContainerExecResize(ctx, exec, opts)
+	} else {
+		return c.client.ContainerResize(ctx, c.id, opts)
+	}
 }
 
 // streamIO proxies STDIN/STDOUT for a hijacked TCP connection.
@@ -349,4 +369,76 @@ func streamIO(ctx context.Context, resp types.HijackedResponse, tty bool) error 
 	case <-ctx.Done():
 		return ctx.Err()
 	}
+}
+
+type ExecOpts struct {
+	// (required) Command and arguments.
+	Command []string
+
+	// (optional) Environment variables.
+	Env map[string]string
+
+	// (optional) User that will run the command.
+	// Defaults to the user of the container's root process.
+	User string
+
+	// (optional) WorkingDir where the command will be launched.
+	// Defaults to the container's working dir.
+	WorkingDir string
+}
+
+func (c *Container) Exec(ctx context.Context, opts *ExecOpts) error {
+	const tty = true // TODO: Detect or config param to set TTY.
+
+	env := make([]string, 0, len(opts.Env))
+	for k, v := range opts.Env {
+		env = append(env, k+"="+v)
+	}
+
+	exec, err := c.client.ContainerExecCreate(ctx, c.id, types.ExecConfig{
+		User:         opts.User,
+		Tty:          tty,
+		AttachStdin:  true,
+		AttachStderr: true,
+		AttachStdout: true,
+		Env:          env,
+		WorkingDir:   opts.WorkingDir,
+		Cmd:          opts.Command,
+	})
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.client.ContainerExecAttach(ctx, exec.ID, types.ExecStartCheck{
+		Tty: tty,
+	})
+	if err != nil {
+		return err
+	}
+	defer resp.Close()
+
+	errCh := make(chan error, 1)
+	go func() {
+		defer close(errCh)
+		errCh <- func() error {
+			return streamIO(ctx, resp, tty)
+		}()
+	}()
+
+	if tty {
+		c.monitorTTYSize(ctx, exec.ID)
+	}
+
+	if err := <-errCh; err != nil {
+		return err
+	}
+
+	result, err := c.client.ContainerExecInspect(ctx, exec.ID)
+	if err != nil {
+		return err
+	}
+	if result.ExitCode != 0 {
+		return fmt.Errorf("exited with code %d", result.ExitCode)
+	}
+	return nil
 }
