@@ -4,10 +4,10 @@ go 1.14
 
 require (
 	cloud.google.com/go v0.77.0 // indirect
-	github.com/Microsoft/go-winio v0.4.16 // indirect
+	github.com/Microsoft/go-winio v0.4.18 // indirect
 	github.com/allenai/bytefmt v0.1.0
 	github.com/beaker/unique v0.0.0-20190717213810-0c2d114f43d0
-	github.com/containerd/containerd v1.4.3 // indirect
+	github.com/containerd/containerd v1.4.4 // indirect
 	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/docker/docker v20.10.3+incompatible
 	github.com/docker/go-connections v0.4.0 // indirect
@@ -27,6 +27,7 @@ require (
 	golang.org/x/time v0.0.0-20201208040808-7e3f01d25324 // indirect
 	google.golang.org/genproto v0.0.0-20210218151259-fe80b386bf06 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
+	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 	gotest.tools/v3 v3.0.3 // indirect
 	k8s.io/api v0.20.2
 	k8s.io/apimachinery v0.20.2
