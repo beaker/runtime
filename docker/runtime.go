@@ -161,6 +161,21 @@ func (r *Runtime) CreateContainer(
 			Driver:       "nvidia",
 			Capabilities: [][]string{{"gpu"}},
 		}}
+	} else {
+		// If there aren't any GPUs requested, explicitly set NVIDIA_VISIBLE_DEVICES to none.
+		// If we don't do this, all of the hosts GPUs will be accessible, see:
+		// https://github.com/allenai/beaker-service/issues/1416.
+		//
+		// It's worth noting that we tried to use the `DeviceRequest` API above, both
+		// by requesting no `DeviceIds` and by explicitly setting `Count` to `0`. Neither
+		// route worked and we're not sure why, and there's little to no documentation about
+		// this approach.
+		//
+		// In fact, NVIDIA's docs explicity mention the NVIDIA_VISIBLE_DEVICES mechanism,
+		// but make no mention of `DeviceRequest`s. So for now this might very well be
+		// the canonical solution, even if it feels a little brittle.
+		// See: https://github.com/NVIDIA/nvidia-container-runtime
+		cconf.Env = append(cconf.Env, fmt.Sprintf("%s=none", visibleDevicesEnv))
 	}
 
 	// Docker's auto-generated names frequently collide, so generate a random one.
