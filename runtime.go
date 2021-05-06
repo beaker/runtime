@@ -10,12 +10,28 @@ import (
 
 //go:generate mockery --dir . --all
 
+// PullPolicy enumerates options for pulling images.
+type PullPolicy string
+
+const (
+	// PullAlways indicates an image should always be pulled even if already present.
+	PullAlways PullPolicy = "always"
+
+	// PullIfMissing pulls an image only if it doesn't exist locally. The local
+	// image will not be updated if the remote version has changed.
+	PullIfMissing PullPolicy = "missing"
+
+	// PullNever validates that an image exists locally. It does not attempt to
+	// pull the remote version, even if the image is missing.
+	PullNever PullPolicy = "never"
+)
+
 // Runtime abstracts the specifics of interacting with the underlying container
 // runtime (e.g. Docker) for execution.
 type Runtime interface {
 	io.Closer
 
-	PullImage(ctx context.Context, image *DockerImage, quiet bool) error
+	PullImage(ctx context.Context, image *DockerImage, policy PullPolicy, quiet bool) error
 	CreateContainer(ctx context.Context, opts *ContainerOpts) (Container, error)
 	ListContainers(ctx context.Context) ([]Container, error)
 }

@@ -58,8 +58,26 @@ func (r *Runtime) Close() error {
 func (r *Runtime) PullImage(
 	ctx context.Context,
 	image *runtime.DockerImage,
+	policy runtime.PullPolicy,
 	quiet bool,
 ) error {
+	switch policy {
+	case runtime.PullAlways:
+		// Nothing to do. Proceed to pulling the image.
+	case runtime.PullIfMissing:
+		// Check existence and return on success or any error other than NotFound.
+		_, _, err := r.client.ImageInspectWithRaw(ctx, image.Tag)
+		if !client.IsErrNotFound(err) {
+			return err
+		}
+	case runtime.PullNever:
+		// Just check existence. Return success or failure.
+		_, _, err := r.client.ImageInspectWithRaw(ctx, image.Tag)
+		return err
+	default:
+		return fmt.Errorf("%q is not a valid image pull policy", policy)
+	}
+
 	registryAuth, err := encodeRegistryAuth(image.Auth)
 	if err != nil {
 		return fmt.Errorf("encoding registry auth: %w", err)

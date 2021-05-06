@@ -91,6 +91,7 @@ func (r *Runtime) Close() error {
 func (r *Runtime) PullImage(
 	ctx context.Context,
 	image *runtime.DockerImage,
+	policy runtime.PullPolicy,
 	quiet bool,
 ) error {
 	return nil
