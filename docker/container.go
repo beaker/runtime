@@ -245,21 +245,23 @@ func calculateMemPercentUnixNoCache(limit float64, usedNoCache float64) float64 
 	return 0
 }
 
-// Attach connects to a created container with an interactive prompt.
-// This is a borrowed and cleaned up version of the Docker CLI implementation.
-func (c *Container) Attach(ctx context.Context) error {
-	const tty = true // TODO: Detect or config param to set TTY.
-
-	resp, err := c.client.ContainerAttach(ctx, c.id, types.ContainerAttachOptions{
+// Attach hijacks the IO streams of a container.
+// This must be called before the container is started.
+func (c *Container) Attach(ctx context.Context) (types.HijackedResponse, error) {
+	return c.client.ContainerAttach(ctx, c.id, types.ContainerAttachOptions{
 		Stream: true,
 		Stdin:  true,
 		Stdout: true,
 		Stderr: true,
 	})
-	if err != nil {
-		return err
-	}
-	defer resp.Close()
+}
+
+// Stream connects to a container with an interactive prompt.
+// Use Attach to get the hijacked response.
+// This must be called after the container is started.
+// This is a borrowed and cleaned up version of the Docker CLI implementation.
+func (c *Container) Stream(ctx context.Context, resp types.HijackedResponse) error {
+	const tty = true // TODO: Detect or config param to set TTY.
 
 	if tty {
 		c.monitorTTYSize(ctx, "")
@@ -268,6 +270,11 @@ func (c *Container) Attach(ctx context.Context) error {
 	resultC, errC := c.client.ContainerWait(ctx, c.id, "")
 	if err := streamIO(ctx, resp, tty); err != nil {
 		return err
+	}
+
+	// Resize the TTY when reattaching so that the prompt shows up.
+	if tty {
+		c.resizeTTY(ctx, "")
 	}
 
 	// The user has exited the shell. Wait for the container to end to allow
