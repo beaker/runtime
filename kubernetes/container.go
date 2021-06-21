@@ -46,10 +46,10 @@ func (c *Container) Start(ctx context.Context) error {
 // Info returns a container's details.
 func (c *Container) Info(ctx context.Context) (*runtime.ContainerInfo, error) {
 	pod, err := c.client.CoreV1().Pods(c.namespace).Get(ctx, c.podName, metav1.GetOptions{})
-	if k8serror.IsNotFound(err) {
-		return nil, runtime.ErrNotFound
-	}
 	if err != nil {
+		if k8serror.IsNotFound(err) {
+			return nil, runtime.ErrNotFound
+		}
 		return nil, fmt.Errorf("getting pod: %w", err)
 	}
 
@@ -191,8 +191,7 @@ func (c *Container) resolveContainer(ctx context.Context) error {
 		return nil
 	}
 
-	pods := c.client.CoreV1().Pods(c.namespace)
-	pod, err := pods.Get(ctx, c.podName, metav1.GetOptions{})
+	pod, err := c.client.CoreV1().Pods(c.namespace).Get(ctx, c.podName, metav1.GetOptions{})
 	if err != nil {
 		if k8serror.IsNotFound(err) {
 			return runtime.ErrNotFound
@@ -200,30 +199,40 @@ func (c *Container) resolveContainer(ctx context.Context) error {
 		return fmt.Errorf("finding pod: %w", err)
 	}
 
+	// Find the underlying runtime's container ID for the pod's main task.
 	var containerID string
 	for _, status := range pod.Status.ContainerStatuses {
 		if status.Name == c.containerName {
-			parts := strings.SplitN(c.containerName, "://", 2)
-			if len(parts) < 2 {
-				containerID = parts[0] // Empty string or unusual format.
-			} else {
-				containerID = parts[1] // URI form "containerd://<id>"
-			}
+			containerID = status.ContainerID
 			break
 		}
 	}
 
+	log := log.WithFields(log.Fields{
+		"container": containerID,
+		"pod":       c.podName,
+	})
+
+	log.Debugf("Resolving underlying container...")
 	if containerID == "" {
+		log.Debugf("Container has not yet been created")
 		return runtime.ErrNotStarted
 	}
 
-	c.runtimeLock.Lock()
-	defer c.runtimeLock.Unlock()
+	// Strip the name's prefix if it has one.
+	if parts := strings.SplitN(containerID, "://", 2); len(parts) == 2 {
+		containerID = parts[1] // URI form "containerd://<id>"
+	}
 
 	wrapper, ok := c.runtime.(containerWrapper)
 	if !ok {
 		return fmt.Errorf("underlying runtime doesn't support direct container access (%w)", runtime.ErrNotImplemented)
 	}
+
+	c.runtimeLock.Lock()
 	c.container = wrapper.Container(containerID)
+	c.runtimeLock.Unlock()
+
+	log.Debugf("Resolved underlying container")
 	return nil
 }
