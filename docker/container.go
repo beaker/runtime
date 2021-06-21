@@ -27,11 +27,6 @@ type Container struct {
 	id     string
 }
 
-// WrapContainer creates an interface to an existing container.
-func WrapContainer(client *client.Client, id string) *Container {
-	return &Container{client, id}
-}
-
 // Name returns the container's unique ID.
 func (c *Container) Name() string {
 	return c.id

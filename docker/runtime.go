@@ -212,7 +212,7 @@ func (r *Runtime) CreateContainer(
 		return nil, err
 	}
 
-	return WrapContainer(r.client, c.ID), nil
+	return r.Container(c.ID), nil
 }
 
 // ListContainers enumerates all containers.
@@ -229,9 +229,14 @@ func (r *Runtime) ListContainers(ctx context.Context) ([]runtime.Container, erro
 
 	containers := make([]runtime.Container, len(body))
 	for i, c := range body {
-		containers[i] = WrapContainer(r.client, c.ID)
+		containers[i] = r.Container(c.ID)
 	}
 	return containers, nil
+}
+
+// Container creates an interface to an existing container.
+func (r *Runtime) Container(id string) runtime.Container {
+	return &Container{r.client, id}
 }
 
 func encodeRegistryAuth(auth *runtime.RegistryAuth) (string, error) {

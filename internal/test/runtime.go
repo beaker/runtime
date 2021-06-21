@@ -6,11 +6,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/beaker/runtime"
-	"github.com/beaker/runtime/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/beaker/runtime"
+	"github.com/beaker/runtime/logging"
 )
 
 var busybox = &runtime.DockerImage{Tag: "docker.io/busybox:latest"}

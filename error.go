@@ -10,4 +10,7 @@ var (
 
 	// ErrNotStarted indicates failure because a container hasn't started yet.
 	ErrNotStarted = errors.New("container has not started")
+
+	// ErrNotImplemented indicates the underlying runtime hasn't implemented a function.
+	ErrNotImplemented = errors.New("not implemented")
 )

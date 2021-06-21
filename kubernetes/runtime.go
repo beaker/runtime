@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/allenai/bytefmt"
-	dockerclient "github.com/docker/docker/client"
 	corev1 "k8s.io/api/core/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -20,7 +19,7 @@ import (
 	"k8s.io/client-go/rest"
 
 	"github.com/beaker/runtime"
-	"github.com/beaker/runtime/docker"
+	"github.com/beaker/runtime/cri"
 )
 
 const (
@@ -45,7 +44,7 @@ var labelRegex = regexp.MustCompile("^([a-zA-Z0-9]([a-zA-Z0-9._-]{0,61}[a-zA-Z0-
 // All methods are scoped to the current node.
 type Runtime struct {
 	client    *kubernetes.Clientset
-	docker    *dockerclient.Client
+	runtime   runtime.Runtime
 	namespace string
 	node      string
 }
@@ -68,15 +67,16 @@ func NewInClusterRuntime(ctx context.Context, namespace string, node string) (*R
 		return nil, fmt.Errorf("getting namespace %s: %w", namespace, err)
 	}
 
-	// Negotiate the docker version since GKE could be running an older version of Docker
-	dockerClient, err := dockerclient.NewClientWithOpts(dockerclient.WithAPIVersionNegotiation())
+	// TODO: This hard-coded to match our current GKE config, but we should pass
+	// the runtime via configuration params instead.
+	criRuntime, err := cri.NewRuntime(ctx, "unix:///run/containerd/containerd.sock")
 	if err != nil {
 		return nil, err
 	}
 
 	return &Runtime{
 		client:    client,
-		docker:    dockerClient,
+		runtime:   criRuntime,
 		namespace: namespace,
 		node:      node,
 	}, nil
@@ -250,7 +250,7 @@ func (r *Runtime) CreateContainer(
 
 	return &Container{
 		client:        r.client,
-		docker:        r.dockerContainer(pod),
+		runtime:       r.runtime,
 		namespace:     r.namespace,
 		podName:       pod.Name,
 		containerName: containerName,
@@ -270,16 +270,11 @@ func (r *Runtime) ListContainers(ctx context.Context) ([]runtime.Container, erro
 	for _, pod := range pods.Items {
 		containers = append(containers, &Container{
 			client:        r.client,
-			docker:        r.dockerContainer(&pod),
+			runtime:       r.runtime,
 			namespace:     r.namespace,
 			podName:       pod.Name,
 			containerName: containerName,
 		})
 	}
 	return containers, nil
-}
-
-func (r *Runtime) dockerContainer(pod *corev1.Pod) *docker.Container {
-	name := fmt.Sprintf("k8s_%s_%s_%s_%s_0", containerName, pod.Name, r.namespace, pod.UID)
-	return docker.WrapContainer(r.docker, name)
 }
