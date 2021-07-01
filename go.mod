@@ -5,7 +5,7 @@ go 1.14
 require (
 	cloud.google.com/go v0.81.0 // indirect
 	github.com/Microsoft/go-winio v0.4.19 // indirect
-	github.com/allenai/bytefmt v0.1.1
+	github.com/allenai/bytefmt v0.1.2
 	github.com/beaker/unique v0.0.0-20190717213810-0c2d114f43d0
 	github.com/containerd/containerd v1.4.4 // indirect
 	github.com/docker/distribution v2.7.1+incompatible // indirect

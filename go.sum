@@ -53,8 +53,8 @@ github.com/Microsoft/go-winio v0.4.19/go.mod h1:JPGBdM1cNvN/6ISo+n8V5iA4v8pBzdOp
 github.com/NYTimes/gziphandler v0.0.0-20170623195520-56545f4a5d46/go.mod h1:3wb06e3pkSAbeQ52E9H9iFoQsEEwGN64994WTCIhntQ=
 github.com/PuerkitoBio/purell v1.1.1/go.mod h1:c11w/QuzBsJSee3cPx9rAFu61PvFxuPbtSwDGJws/X0=
 github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578/go.mod h1:uGdkoq3SwY9Y+13GIhn11/XLaGBb4BfwItxLd5jeuXE=
-github.com/allenai/bytefmt v0.1.1 h1:WjaMWCox0x39h40Q6HNLjXS8ourFHeZwsXwlyeierXY=
-github.com/allenai/bytefmt v0.1.1/go.mod h1:3hhcDqHXjwM3JBHx4cX79jG5G3V8zKsjeutbhJ3XjI0=
+github.com/allenai/bytefmt v0.1.2 h1:27970/ph1eYlv9e5i6Jc6SZoIyXy+DVD4hDDiF0dQGI=
+github.com/allenai/bytefmt v0.1.2/go.mod h1:3hhcDqHXjwM3JBHx4cX79jG5G3V8zKsjeutbhJ3XjI0=
 github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a/go.mod h1:lB+ZfQJz7igIIfQNfa7Ml4HSf2uFQQRzpGGRXenZAgY=
 github.com/beaker/unique v0.0.0-20190717213810-0c2d114f43d0 h1:lEhZP+VysiO6zFO4QVKZDp4qG/qTKmfIulocXrkYizo=
 github.com/beaker/unique v0.0.0-20190717213810-0c2d114f43d0/go.mod h1:OopXQATRWvY8TuEUzzLbM7tlNjdtA1QkbUJyz3mLMks=
