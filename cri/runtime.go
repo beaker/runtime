@@ -126,7 +126,9 @@ func (r *Runtime) CreateContainer(
 		}
 		cconf.Linux.Resources.MemoryLimitInBytes = mem
 	}
-	if opts.CPUCount != 0 {
+	if opts.CPUShares != 0 {
+		cconf.Linux.Resources.CpuShares = opts.CPUShares
+	} else if opts.CPUCount != 0 {
 		// CPU period and quota are in microseconds.
 		cconf.Linux.Resources.CpuPeriod = 100000
 		cconf.Linux.Resources.CpuQuota = int64(opts.CPUCount * 100000)
@@ -139,6 +141,9 @@ func (r *Runtime) CreateContainer(
 		// If we don't do this, all of the hosts GPUs will be accessible, see:
 		// https://github.com/allenai/beaker-service/issues/1416.
 		cconf.Envs = append(cconf.Envs, &cri.KeyValue{Key: visibleDevicesEnv, Value: "none"})
+	}
+	if opts.IsEvictable() {
+		cconf.Linux.Resources.OomScoreAdj = 1000
 	}
 
 	c, err := r.client.CreateContainer(ctx, &cri.CreateContainerRequest{Config: cconf})

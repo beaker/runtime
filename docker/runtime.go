@@ -170,7 +170,9 @@ func (r *Runtime) CreateContainer(
 		}
 		hconf.Resources.Memory = mem
 	}
-	if opts.CPUCount != 0 {
+	if opts.CPUShares != 0 {
+		hconf.Resources.CPUShares = opts.CPUShares
+	} else if opts.CPUCount != 0 {
 		hconf.Resources.NanoCPUs = int64(opts.CPUCount * 1000000000)
 	}
 	if len(opts.GPUs) != 0 {
@@ -194,6 +196,9 @@ func (r *Runtime) CreateContainer(
 		// the canonical solution, even if it feels a little brittle.
 		// See: https://github.com/NVIDIA/nvidia-container-runtime
 		cconf.Env = append(cconf.Env, fmt.Sprintf("%s=none", visibleDevicesEnv))
+	}
+	if opts.IsEvictable() {
+		hconf.OomScoreAdj = 1000
 	}
 
 	// Docker's auto-generated names frequently collide, so generate a random one.

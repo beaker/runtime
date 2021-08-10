@@ -51,10 +51,24 @@ type ContainerOpts struct {
 	// Attach STDIN/STDOUT/STDERR and shell into the container.
 	Interactive bool
 
-	// Resource limits
-	Memory   int64 // In bytes
+	// Memory is a hard limit on the amount of memory a container can use.
+	// Expressed as a number of bytes.
+	Memory int64
+
+	// CPUCount is a hard limit on the number of CPUs a container can use.
 	CPUCount float64
-	GPUs     []string // IDs or indices.
+
+	// CPUShares limit the amount of CPU a container can use relative to other containers.
+	// Each container defaults to 1024 shares. During periods of CPU contention, CPU is limited
+	// in proportion to the number of shares a container has e.g. a container with 2048
+	// shares can use twice as much CPU as one with 1024 shares.
+	//
+	// CPUShares are ignored in the Kubernetes runtime.
+	// CPUShares take precedence over CPUCount in the Docker and CRI runtimes.
+	CPUShares int64
+
+	// GPUs assigned to the container as IDs or indices.
+	GPUs []string
 
 	// (optional) User that will run commands inside the container. Also supports "user:group".
 	// If not provided, the container is run as root.
@@ -62,6 +76,12 @@ type ContainerOpts struct {
 
 	// (optional) WorkingDir where the command will be launched.
 	WorkingDir string
+}
+
+// IsEvictable returns true if a container is evictable. Evictable containers are the first to be killed
+// during periods of memory contention.
+func (o *ContainerOpts) IsEvictable() bool {
+	return o.Memory == 0 && o.CPUCount == 0 && o.CPUShares == 0 && len(o.GPUs) == 0
 }
 
 // DockerImage specifies a Docker-based container image.

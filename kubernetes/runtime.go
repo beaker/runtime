@@ -177,21 +177,39 @@ func (r *Runtime) CreateContainer(
 	// of limits to give utilization tracking a hint without impacting scheduling.
 	requests := corev1.ResourceList{}
 	limits := corev1.ResourceList{}
-	if opts.Memory != 0 {
-		// Default to small request to avoid scheduling issues on small nodes
-		requests[corev1.ResourceMemory] = *resource.NewQuantity(opts.Memory/10, resource.DecimalSI)
-		limits[corev1.ResourceMemory] = *resource.NewQuantity(opts.Memory, resource.DecimalSI)
-	}
-	if opts.CPUCount != 0 {
-		milli := int64(opts.CPUCount * 1000)
-		// Default to small request to avoid scheduling issues on small nodes
-		requests[corev1.ResourceCPU] = *resource.NewMilliQuantity(int64(milli/10), resource.DecimalSI)
-		limits[corev1.ResourceCPU] = *resource.NewMilliQuantity(int64(milli), resource.DecimalSI)
-	}
-	if count := len(opts.GPUs); count != 0 {
-		// Kubernetes offers no way to bind to specific GPUs, but guarantees
-		// that they will only be mapped to one container. Just use the count.
-		limits[gpuResource] = *resource.NewQuantity(int64(count), resource.DecimalSI)
+	if opts.IsEvictable() {
+		// There are 3 QoS classes in Kubernetes: Guaranteed, Burstable, and BestEffort.
+		// Pods with Guaranteed QoS are the first to be scheduled and the last to be evicted.
+		// To be Guaranteed, every container in the pod must specify a request and limit
+		// for CPU and memory.
+		// Pods that are of the BestEffort category are the first to be evicted.
+		// To be BestEffort, none of the containers in the pod can specify requests or limits.
+		// Source: https://docs.docker.com/config/containers/resource_constraints/
+
+		// If the pod is evictable, don't specify any requests or limits so that it
+		// gets BestEffort QoS.
+	} else {
+		if opts.Memory != 0 {
+			// Use a small request to avoid scheduling issues on small nodes.
+			// If the request exceeds what is available on the node, K8s won't schedule the pod.
+			// Since we assign the pod to a specific node, this behavior is undesired.
+			// To get around it, we set the request to a value small enough that the node will
+			// always be able to accomodate it.
+			requests[corev1.ResourceMemory] = *resource.NewQuantity(opts.Memory/10, resource.DecimalSI)
+			limits[corev1.ResourceMemory] = *resource.NewQuantity(opts.Memory, resource.DecimalSI)
+		}
+		if opts.CPUCount != 0 {
+			milli := int64(opts.CPUCount * 1000)
+			// Use a small request to avoid scheduling issues on small nodes.
+			// See the comment for memory for an explanation of why this is necessary.
+			requests[corev1.ResourceCPU] = *resource.NewMilliQuantity(int64(milli/10), resource.DecimalSI)
+			limits[corev1.ResourceCPU] = *resource.NewMilliQuantity(int64(milli), resource.DecimalSI)
+		}
+		if count := len(opts.GPUs); count != 0 {
+			// Kubernetes offers no way to bind to specific GPUs, but guarantees
+			// that they will only be mapped to one container. Just use the count.
+			limits[gpuResource] = *resource.NewQuantity(int64(count), resource.DecimalSI)
+		}
 	}
 
 	podSpec := &corev1.Pod{
