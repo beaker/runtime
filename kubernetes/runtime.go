@@ -5,10 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
-	"strings"
 	"time"
 
-	"github.com/allenai/bytefmt"
 	corev1 "k8s.io/api/core/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -25,7 +23,6 @@ import (
 const (
 	containerName         = "task"
 	nodeLabel             = "beaker.org/node"
-	sharedMemoryEnvVar    = "BEAKER_FEATURE_SHARED_MEMORY_OVERRIDE"
 	sharedMemoryVolume    = "shared-memory"
 	sharedMemoryMountPath = "/dev/shm"
 )
@@ -125,37 +122,15 @@ func (r *Runtime) CreateContainer(
 	}
 
 	var env []corev1.EnvVar
-	var volumes []corev1.Volume
-	var volumeMounts []corev1.VolumeMount
-
 	for name, value := range opts.Env {
-		// TODO: This should really be in the spec. See #911 for issue tracking longer term fix.
-		if name == sharedMemoryEnvVar && strings.ToLower(value) == "true" {
-			limit := opts.Memory / 2 // Use half of available memory as limit
-			if limit == 0 {
-				limit = bytefmt.GiB // Arbitrary value to ensure predictable behavior.
-			}
-			volumes = append(volumes, corev1.Volume{
-				Name: sharedMemoryVolume,
-				VolumeSource: corev1.VolumeSource{
-					EmptyDir: &corev1.EmptyDirVolumeSource{
-						Medium:    corev1.StorageMediumMemory,
-						SizeLimit: resource.NewQuantity(limit, resource.DecimalExponent),
-					},
-				},
-			})
-
-			volumeMounts = append(volumeMounts, corev1.VolumeMount{
-				Name:      sharedMemoryVolume,
-				MountPath: sharedMemoryMountPath,
-			})
-		}
 		env = append(env, corev1.EnvVar{
 			Name:  name,
 			Value: value,
 		})
 	}
 
+	var volumes []corev1.Volume
+	var volumeMounts []corev1.VolumeMount
 	for i, mount := range opts.Mounts {
 		name := fmt.Sprintf("volume-%d", i)
 		volumes = append(volumes, corev1.Volume{
@@ -170,6 +145,21 @@ func (r *Runtime) CreateContainer(
 			Name:      name,
 			MountPath: mount.ContainerPath,
 			ReadOnly:  mount.ReadOnly,
+		})
+	}
+	if opts.SharedMemory != 0 {
+		volumes = append(volumes, corev1.Volume{
+			Name: sharedMemoryVolume,
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{
+					Medium:    corev1.StorageMediumMemory,
+					SizeLimit: resource.NewQuantity(opts.SharedMemory, resource.DecimalExponent),
+				},
+			},
+		})
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      sharedMemoryVolume,
+			MountPath: sharedMemoryMountPath,
 		})
 	}
 

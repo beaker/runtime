@@ -4,7 +4,6 @@ go 1.16
 
 require (
 	cloud.google.com/go v0.89.0 // indirect
-	github.com/allenai/bytefmt v0.1.2
 	github.com/beaker/unique v0.0.0-20210625205350-416101674f78
 	github.com/containerd/containerd v1.5.5 // indirect
 	github.com/docker/docker v20.10.7+incompatible

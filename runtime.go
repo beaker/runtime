@@ -55,6 +55,9 @@ type ContainerOpts struct {
 	// Expressed as a number of bytes.
 	Memory int64
 
+	// SharedMemory is the size of /dev/shm in bytes.
+	SharedMemory int64
+
 	// CPUCount is a hard limit on the number of CPUs a container can use.
 	CPUCount float64
 

@@ -170,6 +170,9 @@ func (r *Runtime) CreateContainer(
 		}
 		hconf.Resources.Memory = mem
 	}
+	if opts.SharedMemory != 0 {
+		hconf.ShmSize = opts.SharedMemory
+	}
 	if opts.CPUShares != 0 {
 		hconf.Resources.CPUShares = opts.CPUShares
 	} else if opts.CPUCount != 0 {

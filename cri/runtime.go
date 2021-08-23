@@ -65,6 +65,12 @@ func (r *Runtime) CreateContainer(
 	ctx context.Context,
 	opts *runtime.ContainerOpts,
 ) (runtime.Container, error) {
+	if opts.SharedMemory != 0 {
+		// There doesn't seem to be a way to set the size of /dev/shm (like we do in Docker) or
+		// mount an in-memory volume (like we do in K8s) in CRI.
+		return nil, errors.New("shared memory is not not implemented for CRI")
+	}
+
 	// Prevent collisions on protected variables and labels.
 	if _, ok := opts.Env[visibleDevicesEnv]; ok {
 		return nil, fmt.Errorf("forbidden environment variable: %s", visibleDevicesEnv)
